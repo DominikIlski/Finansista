@@ -1,6 +1,7 @@
 import { db } from '../db/index';
 import { MarketDataProvider, ProviderError } from '../providers/base';
 import { getMarketDefinition, getSupportedMarkets } from '../config/markets';
+import { getNameOverride } from '../config/nameOverrides';
 
 const getValidationTtlDays = (): number => Number(process.env.VALIDATION_TTL_DAYS || 7);
 
@@ -120,6 +121,31 @@ const validateSymbol = async ({
   const cached = getCachedValidation({ ticker: normalizedTicker, market: normalizedMarket });
   if (cached) return { valid: true, source: 'CACHE', symbol: cached };
 
+  const overrideName = getNameOverride(normalizedMarket, normalizedTicker);
+  if (overrideName) {
+    cacheValidation({
+      ticker: normalizedTicker,
+      market: normalizedMarket,
+      name: overrideName,
+      currency: marketDefinition.currency,
+      exchange: marketDefinition.providerExchange,
+      provider: 'OVERRIDE'
+    });
+
+    return {
+      valid: true,
+      source: 'OVERRIDE',
+      symbol: {
+        ticker: normalizedTicker,
+        market: normalizedMarket,
+        name: overrideName,
+        currency: marketDefinition.currency,
+        exchange: marketDefinition.providerExchange
+      },
+      normalized: { ticker: normalizedTicker, market: normalizedMarket }
+    };
+  }
+
   const orderedProviders = orderProvidersForMarket(providers, normalizedMarket);
   let lastProvider = 'UNKNOWN';
   for (const provider of orderedProviders) {
@@ -178,6 +204,19 @@ const resolveSymbolName = async ({
 
   const cached = getCachedValidation({ ticker: normalizedTicker, market: normalizedMarket });
   if (cached?.name) return cached.name;
+
+  const overrideName = getNameOverride(normalizedMarket, normalizedTicker);
+  if (overrideName) {
+    cacheValidation({
+      ticker: normalizedTicker,
+      market: normalizedMarket,
+      name: overrideName,
+      currency: marketDefinition.currency,
+      exchange: marketDefinition.providerExchange,
+      provider: 'OVERRIDE'
+    });
+    return overrideName;
+  }
 
   const orderedProviders = orderProvidersForNames(providers);
   for (const provider of orderedProviders) {

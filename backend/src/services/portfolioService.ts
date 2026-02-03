@@ -1,6 +1,7 @@
 import { db } from '../db/index';
 import { MarketDataProvider } from '../providers/base';
 import { getMarketDefinition } from '../config/markets';
+import { getNameOverride } from '../config/nameOverrides';
 import { getLatestQuote, getHistory } from './marketDataService';
 import { resolveSymbolName } from './validationService';
 import { getFxRate } from './fxService';
@@ -60,6 +61,10 @@ const listHoldings = (portfolioId: number) => {
 };
 
 const getCachedSymbolName = (ticker: string, market: string) => {
+  const marketDefinition = getMarketDefinition(market);
+  const normalizedMarket = marketDefinition?.code.toUpperCase() ?? market.toUpperCase();
+  const normalizedTicker = ticker.toUpperCase();
+
   const row = db
     .prepare(
       `SELECT name
@@ -68,8 +73,27 @@ const getCachedSymbolName = (ticker: string, market: string) => {
        ORDER BY last_verified_at DESC
        LIMIT 1`
     )
-    .get(ticker, market) as { name?: string | null } | undefined;
-  return row?.name ?? null;
+    .get(normalizedTicker, normalizedMarket) as { name?: string | null } | undefined;
+
+  if (row?.name) return row.name;
+
+  const overrideName = getNameOverride(normalizedMarket, normalizedTicker);
+  if (!overrideName) return null;
+
+  db.prepare(
+    `INSERT OR REPLACE INTO market_symbols
+     (ticker, market, name, currency, exchange, provider, last_verified_at)
+     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+  ).run(
+    normalizedTicker,
+    normalizedMarket,
+    overrideName,
+    marketDefinition?.currency ?? null,
+    marketDefinition?.providerExchange ?? null,
+    'OVERRIDE'
+  );
+
+  return overrideName;
 };
 
 const addHolding = ({
