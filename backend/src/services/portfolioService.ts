@@ -111,11 +111,13 @@ const deleteHolding = ({ id, portfolioId }: { id: number; portfolioId: number })
 const listHoldingsWithQuotes = async ({
   portfolioId,
   providers,
-  baseCurrency
+  baseCurrency,
+  forceRefresh = false
 }: {
   portfolioId: number;
   providers: MarketDataProvider[];
   baseCurrency: string;
+  forceRefresh?: boolean;
 }) => {
   const holdings = listHoldings(portfolioId);
   const rateCache = new Map<string, number>();
@@ -160,7 +162,8 @@ const listHoldingsWithQuotes = async ({
         const latest = await getLatestQuote({
           ticker: holding.ticker,
           market: holding.market,
-          providers
+          providers,
+          forceRefresh
         });
 
         quote = {
@@ -205,13 +208,15 @@ const getPerformanceSeries = async ({
   from,
   to,
   providers,
-  baseCurrency
+  baseCurrency,
+  forceRefresh = false
 }: {
   portfolioId: number;
   from?: string;
   to?: string;
   providers: MarketDataProvider[];
   baseCurrency: string;
+  forceRefresh?: boolean;
 }) => {
   const holdings = listHoldings(portfolioId);
   if (!holdings.length) return { series: [], from, to };
@@ -254,7 +259,8 @@ const getPerformanceSeries = async ({
           from: startDate,
           to: endDate,
           interval: '1d',
-          providers
+          providers,
+          forceRefresh
         });
 
         const priceByDate = new Map(

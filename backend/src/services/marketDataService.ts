@@ -113,13 +113,15 @@ const cacheQuote = ({
 const getLatestQuote = async ({
   ticker,
   market,
-  providers
+  providers,
+  forceRefresh = false
 }: {
   ticker: string;
   market: string;
   providers: MarketDataProvider[];
+  forceRefresh?: boolean;
 }) => {
-  const cached = getCachedQuote(ticker, market);
+  const cached = forceRefresh ? null : getCachedQuote(ticker, market);
   if (cached) return { ...cached, cached: true };
 
   const marketProviders = filterProvidersForMarket(providers, market);
@@ -262,7 +264,8 @@ const getHistory = async ({
   from,
   to,
   interval,
-  providers
+  providers,
+  forceRefresh = false
 }: {
   ticker: string;
   market: string;
@@ -270,8 +273,9 @@ const getHistory = async ({
   to: string;
   interval: string;
   providers: MarketDataProvider[];
+  forceRefresh?: boolean;
 }) => {
-  const cached = getCachedHistory({ ticker, market, interval, from, to });
+  const cached = forceRefresh ? null : getCachedHistory({ ticker, market, interval, from, to });
   if (cached) return { rows: cached, source: 'CACHE' };
 
   const marketProviders = filterProvidersForMarket(providers, market);

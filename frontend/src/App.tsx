@@ -17,6 +17,7 @@ import {
   getExchanges,
   getHoldings,
   getPerformance,
+  refreshData,
   validateSymbol,
   ExchangeDefinition,
   Holding,
@@ -71,6 +72,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [validation, setValidation] = useState<ValidationState>({ status: 'idle' });
   const [chartMode, setChartMode] = useState<ChartMode>('value');
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('1M');
@@ -134,6 +136,19 @@ const App = () => {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const { from, to } = getPeriodRange(chartPeriod);
+      await refreshData(from, to, baseCurrency);
+      await loadData(chartPeriod, baseCurrency);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -407,18 +422,23 @@ const App = () => {
             Track US, UK, EU, and crypto positions with fast validation and live cache-aware pricing.
           </p>
         </div>
-        <div className="currency-switch">
-          <span>Base Currency</span>
-          <select
-            value={baseCurrency}
-            onChange={(event) => setBaseCurrency(event.target.value as BaseCurrency)}
-          >
-            {(['PLN', 'USD', 'EUR', 'GBP'] as BaseCurrency[]).map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
+        <div className="topbar-actions">
+          <div className="currency-switch">
+            <span>Base Currency</span>
+            <select
+              value={baseCurrency}
+              onChange={(event) => setBaseCurrency(event.target.value as BaseCurrency)}
+            >
+              {(['PLN', 'USD', 'EUR', 'GBP'] as BaseCurrency[]).map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="button" className="ghost refresh-button" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? 'Refreshing...' : 'Refresh data'}
+          </button>
         </div>
       </header>
 

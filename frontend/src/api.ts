@@ -116,6 +116,19 @@ export const getPerformance = async (
   return data.series;
 };
 
+export const refreshData = async (
+  from?: string,
+  to?: string,
+  currency?: string
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to, currency })
+  });
+  await handleResponse(response);
+};
+
 export const validateSymbol = async (ticker: string, market: string): Promise<ValidationResult> => {
   const response = await fetch(`${API_URL}/api/validate`, {
     method: 'POST',

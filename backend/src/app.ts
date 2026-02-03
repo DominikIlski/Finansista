@@ -148,6 +148,39 @@ const createApp = ({ providers }: { providers: MarketDataProvider[] }) => {
     }
   });
 
+  app.post('/api/refresh', async (req: Request, res: Response) => {
+    try {
+      const portfolioId = Number(req.body?.portfolioId || 1);
+      const currency = typeof req.body?.currency === 'string'
+        ? req.body.currency.toUpperCase()
+        : getPortfolioBaseCurrency(portfolioId);
+      const from = typeof req.body?.from === 'string' ? req.body.from : undefined;
+      const to = typeof req.body?.to === 'string' ? req.body.to : undefined;
+
+      await listHoldingsWithQuotes({
+        portfolioId,
+        providers,
+        baseCurrency: currency,
+        forceRefresh: true
+      });
+
+      if (from || to) {
+        await getPerformanceSeries({
+          portfolioId,
+          from,
+          to,
+          providers,
+          baseCurrency: currency,
+          forceRefresh: true
+        });
+      }
+
+      res.json({ refreshed: true });
+    } catch (error) {
+      res.status(502).json({ error: error instanceof Error ? error.message : 'Refresh failed' });
+    }
+  });
+
   return app;
 };
 

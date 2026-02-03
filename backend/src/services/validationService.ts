@@ -48,11 +48,23 @@ const cacheValidation = ({
   exchange: string | null;
   provider: string;
 }) => {
+  const existing = db
+    .prepare(
+      `SELECT name
+       FROM market_symbols
+       WHERE ticker = ? AND market = ?
+       ORDER BY last_verified_at DESC
+       LIMIT 1`
+    )
+    .get(ticker, market) as { name?: string | null } | undefined;
+
+  const nameToStore = existing?.name ?? name;
+
   db.prepare(
     `INSERT OR REPLACE INTO market_symbols
      (ticker, market, name, currency, exchange, provider, last_verified_at)
      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-  ).run(ticker, market, name, currency, exchange, provider);
+  ).run(ticker, market, nameToStore, currency, exchange, provider);
 };
 
 const normalizeTicker = (ticker: string, market: string) => {

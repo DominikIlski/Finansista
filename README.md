@@ -1,4 +1,4 @@
-# Portfolio Tracker MVP
+# Finansista – Portfolio Tracker MVP
 
 ## System Architecture Overview
 - Frontend: React + Vite app (`/frontend`) for holdings entry, charting, and portfolio metrics.
@@ -69,6 +69,7 @@ Response:
       "id": 1,
       "ticker": "AAPL",
       "market": "NASDAQ",
+      "company_name": "Apple Inc.",
       "buy_price": 120,
       "quantity": 2,
       "latest_quote": { "price": 185.1, "as_of": "2024-01-02", "source": "TWELVE_DATA", "cached": true },
@@ -114,6 +115,16 @@ Response:
 }
 ```
 
+`POST /api/refresh`
+Request:
+```json
+{ "from": "2024-01-01", "to": "2024-02-01", "currency": "PLN" }
+```
+Response:
+```json
+{ "refreshed": true }
+```
+
 ## Validation Logic (Ticker + Market)
 - Check `market_symbols` cache for a recent validation entry.
 - If missing/expired, call provider `searchSymbol` with `ticker` and `market` (exchange).
@@ -134,15 +145,15 @@ Focused on US, London, EU, plus Binance for BTC:
 - Currency selector lets you switch base currency (PLN/USD/EUR/GBP) using cached FX rates.
 
 ## Provider Strategy
-- Primary: Twelve Data (global coverage, real-time/near real-time where supported).
-- Fallback: Stooq (free daily US equities) for environments without an API key.
-- Provider chain is configured in `backend/src/providers/index.js` and used by caching services.
+- Primary: Twelve Data (global coverage, real-time/near real-time where supported). Also used for company names.
+- Fallback: Stooq (free daily prices for US/UK/PL/DE equities).
+- Provider chain is configured in `backend/src/providers/index.ts` and used by caching services.
 
 If you prefer `yfinance`, swap in a provider that scrapes Yahoo Finance data. See "Provider Tradeoffs" below.
 
 ## Provider Tradeoffs (Summary)
 - Twelve Data: strong global coverage and multiple asset classes, but API key required and rate limits on free tiers.
-- Stooq: free and keyless, but daily-only, limited to US equities in this MVP.
+- Stooq: free and keyless, but daily-only; best for US/UK/PL/DE equities.
 - yfinance: unofficial scraping library, inconsistent real-time behavior, and subject to throttling/changes.
 
 ## Step-by-Step Local Setup
@@ -152,6 +163,7 @@ Prerequisites: Node.js 18+ (for built-in `fetch`).
    - `cd backend`
    - `npm install`
    - `cp .env.example .env` and set `TWELVE_DATA_API_KEY`
+   - Note: `.env` files are gitignored to avoid publishing secrets.
    - `npm run dev`
    - Optional type check: `npm run typecheck`
 2. Frontend:

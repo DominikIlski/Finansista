@@ -97,6 +97,14 @@ p {
   line-height: 1.6;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .currency-switch {
   display: flex;
   align-items: center;
@@ -112,6 +120,10 @@ p {
   border-radius: 999px;
   background: var(--surface);
   border: 1px solid var(--stroke);
+}
+
+.refresh-button {
+  padding: 10px 16px;
 }
 
 .alert {
