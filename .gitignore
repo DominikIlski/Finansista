@@ -1,0 +1,32 @@
+# Node
+node_modules
+npm-debug.log*
+
+# Env
+.env
+.env.*
+
+# Build
+/dist
+/build
+
+# SQLite
+data
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+
+# Vite
+.vite
+
+# Playwright
+playwright-report
+test-results
+
+# Local exports / artifacts
+output/
+*.xlsx
+mg-*.md
+tdd-progress.md
