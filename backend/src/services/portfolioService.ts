@@ -286,6 +286,9 @@ const getPerformanceSeries = async ({
           providers,
           forceRefresh
         });
+        if (!rows.length) {
+          throw new Error('History returned no data');
+        }
 
         const priceByDate = new Map(
           rows.map((row) => [row.date, row.price * fxRate] as const)
@@ -295,10 +298,37 @@ const getPerformanceSeries = async ({
         if (!earliest || earliest > fallbackDate) {
           priceByDate.set(fallbackDate, holding.buy_price * fxRate);
         }
+        const latestDate = rows[rows.length - 1]?.date;
+        if (!latestDate || latestDate < endDate) {
+          try {
+            const latestQuote = await getLatestQuote({
+              ticker: holding.ticker,
+              market: holding.market,
+              providers,
+              forceRefresh
+            });
+            priceByDate.set(endDate, latestQuote.price * fxRate);
+          } catch {
+            if (!latestDate) {
+              priceByDate.set(endDate, holding.buy_price * fxRate);
+            }
+          }
+        }
         historyMap.set(holding.id, priceByDate);
       } catch (error) {
         const fallbackDate = holding.buy_date > startDate ? holding.buy_date : startDate;
         const priceByDate = new Map([[fallbackDate, holding.buy_price * fxRate]]);
+        try {
+          const latestQuote = await getLatestQuote({
+            ticker: holding.ticker,
+            market: holding.market,
+            providers,
+            forceRefresh
+          });
+          priceByDate.set(endDate, latestQuote.price * fxRate);
+        } catch {
+          priceByDate.set(endDate, holding.buy_price * fxRate);
+        }
         historyMap.set(holding.id, priceByDate);
       }
     })

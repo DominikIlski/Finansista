@@ -278,24 +278,30 @@ const App = () => {
     return groupedHoldings
       .slice(0, 4)
       .map((holding) => ({
-        label: holding.ticker,
+        label: holding.company_name ? `${holding.company_name} (${holding.ticker})` : holding.ticker,
         value: holding.totalValue,
         pct: total ? (holding.totalValue / total) * 100 : 0
       }));
   }, [groupedHoldings]);
 
   const allocation = useMemo(() => {
-    const totals = new Map<string, number>();
+    const totals = new Map<string, { label: string; value: number }>();
     groupedHoldings.forEach((holding) => {
-      const region = exchangeMap.get(holding.market)?.region || 'Other';
-      totals.set(region, (totals.get(region) || 0) + holding.totalValue);
+      const exchange = exchangeMap.get(holding.market);
+      const label = exchange ? `${exchange.code} · ${exchange.country}` : holding.market;
+      const existing = totals.get(holding.market);
+      if (existing) {
+        existing.value += holding.totalValue;
+      } else {
+        totals.set(holding.market, { label, value: holding.totalValue });
+      }
     });
-    const totalValue = Array.from(totals.values()).reduce((sum, value) => sum + value, 0);
-    return Array.from(totals.entries())
-      .map(([region, value]) => ({
-        label: region,
-        value,
-        pct: totalValue ? (value / totalValue) * 100 : 0
+    const totalValue = Array.from(totals.values()).reduce((sum, item) => sum + item.value, 0);
+    return Array.from(totals.values())
+      .map((item) => ({
+        label: item.label,
+        value: item.value,
+        pct: totalValue ? (item.value / totalValue) * 100 : 0
       }))
       .sort((a, b) => b.value - a.value);
   }, [groupedHoldings, exchangeMap]);
@@ -369,6 +375,13 @@ const App = () => {
     }
   };
 
+  const gainsTone =
+    chartSeries.values.length && chartSeries.values[chartSeries.values.length - 1] < 0
+      ? '#ef4444'
+      : '#16a34a';
+  const valueTone = '#2563eb';
+  const activeTone = chartMode === 'value' ? valueTone : gainsTone;
+
   const chartData = {
     labels: chartSeries.labels,
     datasets: [
@@ -377,10 +390,38 @@ const App = () => {
         data: chartSeries.values,
         fill: true,
         tension: 0.35,
-        borderColor: '#2563eb',
-        backgroundColor: 'rgba(37, 99, 235, 0.15)',
-        pointRadius: 0
-      }
+        borderWidth: 2.6,
+        borderColor: activeTone,
+        backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D; chartArea?: { top: number; bottom: number } } }) => {
+          const { ctx, chartArea } = context.chart;
+          if (!chartArea) return `${activeTone}22`;
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, `${activeTone}55`);
+          gradient.addColorStop(1, `${activeTone}05`);
+          return gradient;
+        },
+        pointRadius: 0,
+        pointHitRadius: 10,
+        segment: chartMode === 'gains'
+          ? {
+              borderColor: (ctx: { p0: { parsed: { y: number } }; p1: { parsed: { y: number } } }) =>
+                ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0 ? '#16a34a' : '#ef4444'
+            }
+          : undefined
+      },
+      ...(chartMode === 'value' && chartSeries.costBasis.length
+        ? [
+            {
+              label: 'Cost Basis',
+              data: chartSeries.costBasis,
+              fill: false,
+              borderColor: 'rgba(148, 163, 184, 0.7)',
+              borderDash: [6, 6],
+              borderWidth: 1.6,
+              pointRadius: 0
+            }
+          ]
+        : [])
     ]
   };
 
@@ -400,7 +441,7 @@ const App = () => {
           color: '#64748b',
           callback: (value: string | number) => formatAxisCurrency(value, baseCurrency)
         },
-        grid: { color: 'rgba(15, 23, 42, 0.08)' }
+        grid: { color: 'rgba(15, 23, 42, 0.08)', borderDash: [4, 4] }
       }
     }
   };
@@ -472,8 +513,8 @@ const App = () => {
               breakdown.map((item) => (
                 <div className="breakdown-item" key={item.label}>
                   <div className="breakdown-meta">
-                    <span>{item.label}</span>
-                    <span>{item.pct.toFixed(1)}%</span>
+                    <span className="breakdown-label">{item.label}</span>
+                    <span className="breakdown-value">{item.pct.toFixed(1)}%</span>
                   </div>
                   <div className="breakdown-bar">
                     <span style={{ width: `${item.pct}%` }} />

@@ -97,8 +97,14 @@ export class StooqProvider extends MarketDataProvider {
     if (!response.ok || !text) {
       throw new ProviderError('Stooq history fetch failed');
     }
+    if (text.includes('Exceeded the daily hits limit')) {
+      throw new ProviderError('Stooq rate limit exceeded');
+    }
 
     const rows = parseCsv(text);
+    if (!rows.length) {
+      throw new ProviderError('Stooq history returned no data');
+    }
 
     return rows
       .map((row) => ({

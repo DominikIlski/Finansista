@@ -217,8 +217,21 @@ p {
 .breakdown-meta {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.breakdown-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breakdown-value {
+  flex-shrink: 0;
 }
 
 .breakdown-bar {
@@ -238,10 +251,28 @@ p {
 .chart-card {
   grid-area: chart;
   min-height: 420px;
+  position: relative;
+  overflow: hidden;
 }
 
 .chart-wrapper {
-  height: 340px;
+  height: 360px;
+}
+
+.chart-card::after {
+  content: '';
+  position: absolute;
+  right: -120px;
+  top: -140px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.chart-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .allocation-card {
@@ -272,6 +303,13 @@ p {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: center;
+}
+
+.legend-row span:first-child {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
 }
 
 .movers-card {

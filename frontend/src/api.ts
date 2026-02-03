@@ -37,6 +37,7 @@ export type ExchangeDefinition = {
   code: string;
   label: string;
   region: string;
+  country: string;
   assetType: string;
   providerExchange: string;
   defaultQuote?: string;

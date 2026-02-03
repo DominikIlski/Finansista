@@ -5,6 +5,7 @@ export type MarketDefinition = {
   code: string;
   label: string;
   region: MarketRegion;
+  country: string;
   assetType: AssetType;
   providerExchange: string;
   currency: string;
@@ -18,6 +19,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'NASDAQ',
     label: 'NASDAQ (US)',
     region: 'US',
+    country: 'United States',
     assetType: 'equity',
     providerExchange: 'NASDAQ',
     currency: 'USD'
@@ -26,6 +28,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'NYSE',
     label: 'NYSE (US)',
     region: 'US',
+    country: 'United States',
     assetType: 'equity',
     providerExchange: 'NYSE',
     currency: 'USD'
@@ -34,6 +37,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'AMEX',
     label: 'NYSE American (AMEX)',
     region: 'US',
+    country: 'United States',
     assetType: 'equity',
     providerExchange: 'AMEX',
     currency: 'USD'
@@ -42,6 +46,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XLON',
     label: 'London Stock Exchange (XLON)',
     region: 'UK',
+    country: 'United Kingdom',
     assetType: 'equity',
     providerExchange: 'XLON',
     currency: 'GBP',
@@ -51,6 +56,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XWAR',
     label: 'Warsaw Stock Exchange (XWAR/GPW)',
     region: 'EU',
+    country: 'Poland',
     assetType: 'equity',
     providerExchange: 'XWAR',
     currency: 'PLN',
@@ -60,6 +66,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XETR',
     label: 'XETRA (Germany)',
     region: 'EU',
+    country: 'Germany',
     assetType: 'equity',
     providerExchange: 'XETR',
     currency: 'EUR'
@@ -68,6 +75,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XPAR',
     label: 'Euronext Paris (XPAR)',
     region: 'EU',
+    country: 'France',
     assetType: 'equity',
     providerExchange: 'XPAR',
     currency: 'EUR'
@@ -76,6 +84,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XAMS',
     label: 'Euronext Amsterdam (XAMS)',
     region: 'EU',
+    country: 'Netherlands',
     assetType: 'equity',
     providerExchange: 'XAMS',
     currency: 'EUR'
@@ -84,6 +93,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XBRU',
     label: 'Euronext Brussels (XBRU)',
     region: 'EU',
+    country: 'Belgium',
     assetType: 'equity',
     providerExchange: 'XBRU',
     currency: 'EUR'
@@ -92,6 +102,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XMIL',
     label: 'Euronext Milan (XMIL)',
     region: 'EU',
+    country: 'Italy',
     assetType: 'equity',
     providerExchange: 'XMIL',
     currency: 'EUR'
@@ -100,6 +111,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XMAD',
     label: 'Bolsa de Madrid (XMAD)',
     region: 'EU',
+    country: 'Spain',
     assetType: 'equity',
     providerExchange: 'XMAD',
     currency: 'EUR'
@@ -108,6 +120,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'XLIS',
     label: 'Euronext Lisbon (XLIS)',
     region: 'EU',
+    country: 'Portugal',
     assetType: 'equity',
     providerExchange: 'XLIS',
     currency: 'EUR'
@@ -116,6 +129,7 @@ export const SUPPORTED_MARKETS: MarketDefinition[] = [
     code: 'BINANCE',
     label: 'Binance (Crypto)',
     region: 'CRYPTO',
+    country: 'Global',
     assetType: 'crypto',
     providerExchange: 'Binance',
     currency: 'USD',
