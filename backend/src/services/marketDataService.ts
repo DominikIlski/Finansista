@@ -186,6 +186,28 @@ const getCachedHistory = ({
   from: string;
   to: string;
 }) => {
+  const rows = getHistoryRows({ ticker, market, interval, from, to });
+  if (!rows.length) return null;
+
+  const earliest = rows[0].date;
+  const latest = rows[rows.length - 1].date;
+  if (earliest <= from && latest >= to) return rows;
+  return null;
+};
+
+const getHistoryRows = ({
+  ticker,
+  market,
+  interval,
+  from,
+  to
+}: {
+  ticker: string;
+  market: string;
+  interval: string;
+  from: string;
+  to: string;
+}) => {
   const rows = db
     .prepare(
       `SELECT date, price, currency
@@ -195,12 +217,7 @@ const getCachedHistory = ({
     )
     .all(ticker, market, interval, from, to) as Array<HistoryPoint>;
 
-  if (!rows.length) return null;
-
-  const earliest = rows[0].date;
-  const latest = rows[rows.length - 1].date;
-  if (earliest <= from && latest >= to) return rows;
-  return null;
+  return rows;
 };
 
 const getLatestHistoryPrice = (ticker: string, market: string) => {
@@ -297,4 +314,4 @@ const getHistory = async ({
   return { rows, source: provider.name };
 };
 
-export { getLatestQuote, getHistory, fetchWithProviders, getLatestHistoryPrice };
+export { getLatestQuote, getHistory, fetchWithProviders, getLatestHistoryPrice, getHistoryRows };

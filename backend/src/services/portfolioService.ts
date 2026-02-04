@@ -2,7 +2,7 @@ import { db } from '../db/index';
 import { MarketDataProvider } from '../providers/base';
 import { getMarketDefinition } from '../config/markets';
 import { getNameOverride } from '../config/nameOverrides';
-import { getLatestQuote, getHistory } from './marketDataService';
+import { getLatestQuote, getHistory, getHistoryRows } from './marketDataService';
 import { resolveSymbolName } from './validationService';
 import { getFxRate } from './fxService';
 
@@ -317,7 +317,24 @@ const getPerformanceSeries = async ({
         historyMap.set(holding.id, priceByDate);
       } catch (error) {
         const fallbackDate = holding.buy_date > startDate ? holding.buy_date : startDate;
-        const priceByDate = new Map([[fallbackDate, holding.buy_price * fxRate]]);
+        const cachedRows = getHistoryRows({
+          ticker: holding.ticker,
+          market: holding.market,
+          from: startDate,
+          to: endDate,
+          interval: '1d'
+        });
+        const priceByDate = new Map(
+          cachedRows.map((row) => [row.date, row.price * fxRate] as const)
+        );
+        if (!priceByDate.size) {
+          priceByDate.set(fallbackDate, holding.buy_price * fxRate);
+        } else {
+          const earliest = cachedRows[0]?.date;
+          if (!earliest || earliest > fallbackDate) {
+            priceByDate.set(fallbackDate, holding.buy_price * fxRate);
+          }
+        }
         try {
           const latestQuote = await getLatestQuote({
             ticker: holding.ticker,
