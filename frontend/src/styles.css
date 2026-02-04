@@ -138,8 +138,9 @@ p {
   display: grid;
   grid-template-columns: 1fr 2.2fr 1fr;
   grid-template-areas:
-    'balance chart allocation'
-    'breakdown chart movers'
+    'balance chart chart'
+    'breakdown chart chart'
+    'allocation movers movers'
     'table table table'
     'add add add';
   gap: 20px;
@@ -250,13 +251,13 @@ p {
 
 .chart-card {
   grid-area: chart;
-  min-height: 420px;
+  min-height: 520px;
   position: relative;
   overflow: hidden;
 }
 
 .chart-wrapper {
-  height: 360px;
+  height: 430px;
 }
 
 .chart-card::after {
