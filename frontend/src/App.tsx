@@ -30,6 +30,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 type ChartMode = 'value' | 'gains';
 type ChartPeriod = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
+type SortKey = 'company' | 'buy' | 'qty' | 'last' | 'value' | 'pnl';
 type BaseCurrency = 'PLN' | 'USD' | 'EUR' | 'GBP';
 
 type ValidationState = {
@@ -79,6 +80,8 @@ const App = () => {
   const [showForm, setShowForm] = useState(false);
   const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('PLN');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [sortKey, setSortKey] = useState<SortKey>('value');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const getPeriodRange = (period: ChartPeriod) => {
     if (period === 'ALL') return { from: undefined, to: undefined };
@@ -272,6 +275,52 @@ const App = () => {
     groups.sort((a, b) => b.totalValue - a.totalValue);
     return groups;
   }, [holdings]);
+
+  const sortedHoldings = useMemo(() => {
+    const sorted = [...groupedHoldings];
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'company': {
+          const nameA = a.company_name || a.ticker;
+          const nameB = b.company_name || b.ticker;
+          return nameA.localeCompare(nameB) * dir;
+        }
+        case 'buy':
+          return (a.avgBuy - b.avgBuy) * dir;
+        case 'qty':
+          return (a.totalQty - b.totalQty) * dir;
+        case 'last':
+          return (a.lastPrice - b.lastPrice) * dir;
+        case 'pnl':
+          return (a.totalPnl - b.totalPnl) * dir;
+        case 'value':
+        default:
+          return (a.totalValue - b.totalValue) * dir;
+      }
+    });
+    return sorted;
+  }, [groupedHoldings, sortDirection, sortKey]);
+
+  const handleSort = (key: SortKey) => {
+    const defaults: Record<SortKey, 'asc' | 'desc'> = {
+      company: 'asc',
+      buy: 'asc',
+      qty: 'desc',
+      last: 'desc',
+      value: 'desc',
+      pnl: 'desc'
+    };
+
+    setSortKey((prev) => {
+      if (prev === key) {
+        setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
+      setSortDirection(defaults[key]);
+      return key;
+    });
+  };
 
   const breakdown = useMemo(() => {
     const total = groupedHoldings.reduce((sum, holding) => sum + holding.totalValue, 0);
@@ -644,23 +693,89 @@ const App = () => {
           <div className="card-header">
             <div>
               <span className="card-label">Holdings</span>
-              <span className="card-subtitle">{groupedHoldings.length} positions</span>
+              <span className="card-subtitle">{sortedHoldings.length} positions</span>
             </div>
           </div>
           <div className="table">
             <div className="table-row table-head">
-              <span className="cell">Company</span>
-              <span className="cell numeric">Buy</span>
-              <span className="cell numeric">Qty</span>
-              <span className="cell numeric">Last</span>
-              <span className="cell numeric">Value</span>
-              <span className="cell numeric">P/L</span>
+              <span className="cell">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'company' ? 'active' : ''}`}
+                  onClick={() => handleSort('company')}
+                >
+                  Company
+                  <span className="sort-indicator">
+                    {sortKey === 'company' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
+              <span className="cell numeric">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'buy' ? 'active' : ''}`}
+                  onClick={() => handleSort('buy')}
+                >
+                  Buy
+                  <span className="sort-indicator">
+                    {sortKey === 'buy' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
+              <span className="cell numeric">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'qty' ? 'active' : ''}`}
+                  onClick={() => handleSort('qty')}
+                >
+                  Qty
+                  <span className="sort-indicator">
+                    {sortKey === 'qty' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
+              <span className="cell numeric">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'last' ? 'active' : ''}`}
+                  onClick={() => handleSort('last')}
+                >
+                  Last
+                  <span className="sort-indicator">
+                    {sortKey === 'last' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
+              <span className="cell numeric">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'value' ? 'active' : ''}`}
+                  onClick={() => handleSort('value')}
+                >
+                  Value
+                  <span className="sort-indicator">
+                    {sortKey === 'value' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
+              <span className="cell numeric">
+                <button
+                  type="button"
+                  className={`sort-button ${sortKey === 'pnl' ? 'active' : ''}`}
+                  onClick={() => handleSort('pnl')}
+                >
+                  P/L
+                  <span className="sort-indicator">
+                    {sortKey === 'pnl' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                  </span>
+                </button>
+              </span>
               <span className="cell actions"></span>
             </div>
             {loading ? (
               <div className="placeholder">Loading holdings...</div>
-            ) : groupedHoldings.length ? (
-              groupedHoldings.map((group) => {
+            ) : sortedHoldings.length ? (
+              sortedHoldings.map((group) => {
                 const isExpanded = !!expandedGroups[group.key];
                 const canExpand = group.lots.length > 1;
                 return (
