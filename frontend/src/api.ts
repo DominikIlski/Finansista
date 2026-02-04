@@ -28,6 +28,13 @@ export type HoldingInput = {
   quantity: number;
 };
 
+export type Portfolio = {
+  id: number;
+  name: string;
+  base_currency: string;
+  created_at: string;
+};
+
 export type PerformancePoint = {
   date: string;
   value: number;
@@ -76,27 +83,31 @@ export const getExchanges = async (): Promise<ExchangeDefinition[]> => {
   return data.exchanges;
 };
 
-export const getHoldings = async (currency?: string): Promise<Holding[]> => {
+export const getHoldings = async (currency?: string, portfolioId?: number): Promise<Holding[]> => {
   const params = new URLSearchParams();
   if (currency) params.set('currency', currency);
+  if (portfolioId) params.set('portfolioId', String(portfolioId));
   const query = params.toString();
   const response = await fetch(`${API_URL}/api/holdings${query ? `?${query}` : ''}`);
   const data = await handleResponse(response);
   return data.holdings;
 };
 
-export const createHolding = async (input: HoldingInput): Promise<Holding> => {
+export const createHolding = async (input: HoldingInput, portfolioId?: number): Promise<Holding> => {
   const response = await fetch(`${API_URL}/api/holdings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(portfolioId ? { ...input, portfolioId } : input)
   });
   const data = await handleResponse(response);
   return data.holding;
 };
 
-export const deleteHolding = async (id: number): Promise<void> => {
-  const response = await fetch(`${API_URL}/api/holdings/${id}`, {
+export const deleteHolding = async (id: number, portfolioId?: number): Promise<void> => {
+  const params = new URLSearchParams();
+  if (portfolioId) params.set('portfolioId', String(portfolioId));
+  const query = params.toString();
+  const response = await fetch(`${API_URL}/api/holdings/${id}${query ? `?${query}` : ''}`, {
     method: 'DELETE'
   });
   await handleResponse(response);
@@ -105,12 +116,14 @@ export const deleteHolding = async (id: number): Promise<void> => {
 export const getPerformance = async (
   from?: string,
   to?: string,
-  currency?: string
+  currency?: string,
+  portfolioId?: number
 ): Promise<PerformancePoint[]> => {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   if (currency) params.set('currency', currency);
+  if (portfolioId) params.set('portfolioId', String(portfolioId));
   const query = params.toString();
   const response = await fetch(`${API_URL}/api/portfolio/performance${query ? `?${query}` : ''}`);
   const data = await handleResponse(response);
@@ -120,14 +133,34 @@ export const getPerformance = async (
 export const refreshData = async (
   from?: string,
   to?: string,
-  currency?: string
+  currency?: string,
+  portfolioId?: number
 ): Promise<void> => {
   const response = await fetch(`${API_URL}/api/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to, currency })
+    body: JSON.stringify({ from, to, currency, portfolioId })
   });
   await handleResponse(response);
+};
+
+export const getPortfolios = async (): Promise<Portfolio[]> => {
+  const response = await fetch(`${API_URL}/api/portfolios`);
+  const data = await handleResponse(response);
+  return data.portfolios;
+};
+
+export const createPortfolio = async (payload: {
+  name: string;
+  base_currency?: string;
+}): Promise<Portfolio> => {
+  const response = await fetch(`${API_URL}/api/portfolios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await handleResponse(response);
+  return data.portfolio;
 };
 
 export const validateSymbol = async (ticker: string, market: string): Promise<ValidationResult> => {

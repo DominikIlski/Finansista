@@ -13,15 +13,18 @@ import {
 import { Doughnut, Line } from 'react-chartjs-2';
 import {
   createHolding,
+  createPortfolio,
   deleteHolding,
   getExchanges,
   getHoldings,
   getPerformance,
+  getPortfolios,
   refreshData,
   validateSymbol,
   ExchangeDefinition,
   Holding,
   HoldingInput,
+  Portfolio,
   PerformancePoint,
   ValidationResult
 } from './api';
@@ -48,6 +51,7 @@ const defaultForm: HoldingInput = {
 };
 
 const normalizeMoney = (value: number) => (Math.abs(value) < 0.005 ? 0 : value);
+const PORTFOLIO_STORAGE_KEY = 'portfolio_atlas_portfolio_id';
 
 const formatMoney = (value: number, currency: string) => {
   if (!Number.isFinite(value)) return '—';
@@ -82,6 +86,13 @@ const App = () => {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [activePortfolioId, setActivePortfolioId] = useState<number | null>(null);
+  const [portfolioReady, setPortfolioReady] = useState(false);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
+  const [creatingPortfolio, setCreatingPortfolio] = useState(false);
+  const [portfolioName, setPortfolioName] = useState('');
+  const [portfolioCurrency, setPortfolioCurrency] = useState<BaseCurrency>('PLN');
 
   const getPeriodRange = (period: ChartPeriod) => {
     if (period === 'ALL') return { from: undefined, to: undefined };
@@ -103,7 +114,7 @@ const App = () => {
     return { from, to: end };
   };
 
-  const loadData = async (period: ChartPeriod, currency: BaseCurrency) => {
+  const loadData = async (period: ChartPeriod, currency: BaseCurrency, portfolioId: number) => {
     try {
       setLoading(true);
       let loadError: string | null = null;
@@ -112,8 +123,8 @@ const App = () => {
 
       const { from, to } = getPeriodRange(period);
       const [holdingsResult, seriesResult] = await Promise.allSettled([
-        getHoldings(currency),
-        getPerformance(from, to, currency)
+        getHoldings(currency, portfolioId),
+        getPerformance(from, to, currency, portfolioId)
       ]);
 
       if (holdingsResult.status === 'fulfilled') {
@@ -145,9 +156,13 @@ const App = () => {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
+      if (!activePortfolioId) {
+        setError('Select a portfolio first.');
+        return;
+      }
       const { from, to } = getPeriodRange(chartPeriod);
-      await refreshData(from, to, baseCurrency);
-      await loadData(chartPeriod, baseCurrency);
+      await refreshData(from, to, baseCurrency, activePortfolioId);
+      await loadData(chartPeriod, baseCurrency, activePortfolioId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Refresh failed');
     } finally {
@@ -155,9 +170,83 @@ const App = () => {
     }
   };
 
+  const handlePortfolioChange = (value: string) => {
+    const nextId = Number(value);
+    const selected = portfolios.find((portfolio) => portfolio.id === nextId);
+    setActivePortfolioId(nextId);
+    if (selected) {
+      const nextCurrency = selected.base_currency.toUpperCase() as BaseCurrency;
+      setBaseCurrency(nextCurrency);
+      setPortfolioCurrency(nextCurrency);
+    }
+  };
+
+  const handleCreatePortfolio = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = portfolioName.trim();
+    if (!name) return;
+    setCreatingPortfolio(true);
+    try {
+      const created = await createPortfolio({ name, base_currency: portfolioCurrency });
+      setPortfolios((prev) => [...prev, created]);
+      setActivePortfolioId(created.id);
+      const nextCurrency = created.base_currency.toUpperCase() as BaseCurrency;
+      setBaseCurrency(nextCurrency);
+      setPortfolioCurrency(nextCurrency);
+      setPortfolioName('');
+      setShowPortfolioForm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create portfolio');
+    } finally {
+      setCreatingPortfolio(false);
+    }
+  };
+
   useEffect(() => {
-    loadData(chartPeriod, baseCurrency);
-  }, [chartPeriod, baseCurrency]);
+    const bootstrap = async () => {
+      try {
+        const portfolioList = await getPortfolios();
+        let updated = portfolioList;
+        let selected: Portfolio | undefined;
+        const storedId = Number(localStorage.getItem(PORTFOLIO_STORAGE_KEY) || '');
+
+        if (storedId && portfolioList.some((p) => p.id === storedId)) {
+          selected = portfolioList.find((p) => p.id === storedId);
+        }
+
+        if (!selected && portfolioList.length) {
+          selected = portfolioList[0];
+        }
+
+        if (!selected) {
+          const created = await createPortfolio({ name: 'Main Portfolio', base_currency: baseCurrency });
+          updated = [created];
+          selected = created;
+        }
+
+        setPortfolios(updated);
+        setActivePortfolioId(selected.id);
+        setBaseCurrency(selected.base_currency.toUpperCase() as BaseCurrency);
+        setPortfolioCurrency(selected.base_currency.toUpperCase() as BaseCurrency);
+        setPortfolioReady(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load portfolios');
+      }
+    };
+
+    bootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (!portfolioReady || !activePortfolioId) return;
+    loadData(chartPeriod, baseCurrency, activePortfolioId);
+  }, [chartPeriod, baseCurrency, activePortfolioId, portfolioReady]);
+
+  useEffect(() => {
+    if (activePortfolioId) {
+      localStorage.setItem(PORTFOLIO_STORAGE_KEY, String(activePortfolioId));
+    }
+  }, [activePortfolioId]);
 
   useEffect(() => {
     if (!form.ticker || !form.market) {
@@ -403,11 +492,15 @@ const App = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!activePortfolioId) {
+      setError('Select a portfolio first.');
+      return;
+    }
     setSaving(true);
     try {
-      await createHolding(form);
+      await createHolding(form, activePortfolioId);
       setForm((prev) => ({ ...defaultForm, market: prev.market }));
-      await loadData(chartPeriod, baseCurrency);
+      await loadData(chartPeriod, baseCurrency, activePortfolioId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add holding');
     } finally {
@@ -417,8 +510,9 @@ const App = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteHolding(id);
-      await loadData(chartPeriod, baseCurrency);
+      if (!activePortfolioId) return;
+      await deleteHolding(id, activePortfolioId);
+      await loadData(chartPeriod, baseCurrency, activePortfolioId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete holding');
     }
@@ -499,6 +593,7 @@ const App = () => {
     saving ||
     validation.status === 'checking' ||
     validation.status === 'invalid' ||
+    !activePortfolioId ||
     !form.ticker ||
     !form.market;
 
@@ -513,6 +608,57 @@ const App = () => {
           </p>
         </div>
         <div className="topbar-actions">
+          <div className="portfolio-switch">
+            <span>Portfolio</span>
+            <select
+              value={activePortfolioId ?? ''}
+              onChange={(event) => handlePortfolioChange(event.target.value)}
+              disabled={!portfolios.length}
+            >
+              {portfolios.map((portfolio) => (
+                <option key={portfolio.id} value={portfolio.id}>
+                  {portfolio.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() =>
+                setShowPortfolioForm((prev) => {
+                  if (!prev) {
+                    setPortfolioCurrency(baseCurrency);
+                  }
+                  return !prev;
+                })
+              }
+            >
+              {showPortfolioForm ? 'Close' : 'New'}
+            </button>
+          </div>
+          {showPortfolioForm && (
+            <form className="portfolio-form" onSubmit={handleCreatePortfolio}>
+              <input
+                type="text"
+                placeholder="Portfolio name"
+                value={portfolioName}
+                onChange={(event) => setPortfolioName(event.target.value)}
+              />
+              <select
+                value={portfolioCurrency}
+                onChange={(event) => setPortfolioCurrency(event.target.value as BaseCurrency)}
+              >
+                {(['PLN', 'USD', 'EUR', 'GBP'] as BaseCurrency[]).map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="primary" disabled={creatingPortfolio || !portfolioName.trim()}>
+                {creatingPortfolio ? 'Creating...' : 'Create'}
+              </button>
+            </form>
+          )}
           <div className="currency-switch">
             <span>Base Currency</span>
             <select

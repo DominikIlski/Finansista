@@ -20,6 +20,11 @@ const holdingSchema = z.object({
   quantity: z.coerce.number().positive()
 });
 
+const portfolioSchema = z.object({
+  name: z.string().min(1).max(64),
+  base_currency: z.enum(['USD', 'EUR', 'GBP', 'PLN']).optional()
+});
+
 const idParamSchema = z.coerce.number().int().positive();
 
 const getPortfolioBaseCurrency = (portfolioId: number) => {
@@ -48,6 +53,23 @@ const createApp = ({ providers }: { providers: MarketDataProvider[] }) => {
       `SELECT id, name, base_currency, created_at FROM portfolios ORDER BY id`
     ).all();
     res.json({ portfolios: rows });
+  });
+
+  app.post('/api/portfolios', (req: Request, res: Response) => {
+    try {
+      const payload = portfolioSchema.parse(req.body);
+      const baseCurrency = payload.base_currency || 'USD';
+      const result = db.prepare(
+        `INSERT INTO portfolios (name, base_currency)
+         VALUES (?, ?)`
+      ).run(payload.name, baseCurrency);
+      const portfolio = db.prepare(
+        `SELECT id, name, base_currency, created_at FROM portfolios WHERE id = ?`
+      ).get(result.lastInsertRowid);
+      res.status(201).json({ portfolio });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   app.post('/api/validate', async (req: Request, res: Response) => {
